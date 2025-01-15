@@ -384,7 +384,7 @@ func addServiceView(m model) string {
 }
 
 func addSecretView(m model) string {
-	return "Enter service secret (press Enter to confirm, Esc to cancel): " + m.secretInput
+	return "Enter service secret (press Enter to confirm, Esc to cancel): " + strings.Repeat("*", len(m.secretInput))
 }
 
 func main() {
