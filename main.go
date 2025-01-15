@@ -220,6 +220,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				m.recalcCodes()
+				m.passwordInput = ""
 				m.state = "main"
 				m.lastPeriod = time.Now().Unix() / 30
 				return m, nil
@@ -243,6 +244,64 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "q", "esc", "ctrl+c":
 				return m, tea.Quit
+			case "a":
+				m.state = "addService"
+				m.serviceInput = ""
+			case "d":
+				if len(m.services) > 0 {
+					_ = m.deleteService(m.cursor)
+					m.recalcCodes()
+				}
+			}
+		case tickMsg:
+			return m, tickCmd()
+		}
+	case "addService":
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				m.state = "addSecret"
+				m.secretInput = ""
+			case "esc":
+				m.state = "main"
+			case "backspace":
+				if len(m.serviceInput) > 0 {
+					m.serviceInput = m.serviceInput[:len(m.serviceInput)-1]
+				}
+			default:
+				if msg.Type == tea.KeyRunes {
+					m.serviceInput += string(msg.Runes)
+				}
+			}
+		case tickMsg:
+			return m, tickCmd()
+		}
+	case "addSecret":
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				err := m.addService(m.serviceInput, m.secretInput)
+				if err != nil {
+					m.errMsg = "Failed to add service"
+					m.errExp = time.Now().Add(5 * time.Second)
+				} else {
+					m.recalcCodes()
+				}
+				m.serviceInput = ""
+				m.secretInput = ""
+				m.state = "main"
+			case "esc":
+				m.state = "main"
+			case "backspace":
+				if len(m.secretInput) > 0 {
+					m.secretInput = m.secretInput[:len(m.secretInput)-1]
+				}
+			default:
+				if msg.Type == tea.KeyRunes {
+					m.secretInput += string(msg.Runes)
+				}
 			}
 		case tickMsg:
 			return m, tickCmd()
@@ -258,11 +317,11 @@ func (m model) View() string {
 	case "main":
 		return mainView(m)
 	case "addService":
-		return "Add Service"
+		return addServiceView(m)
 	case "addSecret":
-		return "Add Secret"
+		return addSecretView(m)
 	default:
-		return "Unknown"
+		return loginView(m)
 	}
 }
 
@@ -274,7 +333,7 @@ func mainView(m model) string {
 	var b strings.Builder
 	timeLeft := 30 - (time.Now().Unix() % 30)
 	b.WriteString(fmt.Sprintf("Refresh in: %ds\n\n", timeLeft))
-	b.WriteString("Services:\n\n")
+	b.WriteString("Services:\n")
 
 	for i, svc := range m.services {
 		cursor := " "
@@ -288,10 +347,18 @@ func mainView(m model) string {
 	b.WriteString("\n\nPress 'a' to add a new service\nPress 'd' to delete selected service\nPress 'q' to quit\n")
 
 	if m.errMsg != "" && time.Now().Before(m.errExp) {
-		b.WriteString("\nInfo: " + m.errMsg)
+		b.WriteString("Info: " + m.errMsg)
 	}
 
 	return b.String()
+}
+
+func addServiceView(m model) string {
+	return "Enter service name (press Enter to confirm, Esc to cancel): " + m.serviceInput
+}
+
+func addSecretView(m model) string {
+	return "Enter service secret (press Enter to confirm, Esc to cancel): " + m.secretInput
 }
 
 func main() {
