@@ -2,7 +2,10 @@ module totp-cli
 
 go 1.23.4
 
-require github.com/charmbracelet/bubbletea v1.2.4
+require (
+	github.com/charmbracelet/bubbletea v1.2.4
+	golang.org/x/crypto v0.32.0
+)
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
