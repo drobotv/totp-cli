@@ -3,6 +3,7 @@ module totp-cli
 go 1.23.4
 
 require (
+	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/bubbletea v1.2.4
 	github.com/pquerna/otp v1.4.0
 	golang.org/x/crypto v0.32.0

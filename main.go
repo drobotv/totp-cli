@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/chacha20poly1305"
@@ -244,6 +245,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "q", "esc", "ctrl+c":
 				return m, tea.Quit
+			case "up", "k":
+				if m.cursor > 0 {
+					m.cursor--
+				}
+			case "down", "j":
+				if m.cursor < len(m.services)-1 {
+					m.cursor++
+				}
+			case "c":
+				if len(m.services) > 0 {
+					if code, ok := m.codes[m.cursor]; ok {
+						clipboard.WriteAll(code)
+						m.errMsg = fmt.Sprintf("Code for %s copied to clipboard", m.services[m.cursor].name)
+						m.errExp = time.Now().Add(5 * time.Second)
+					}
+				}
 			case "a":
 				m.state = "addService"
 				m.serviceInput = ""
@@ -254,6 +271,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case tickMsg:
+			period := time.Now().Unix() / 30
+			if period != m.lastPeriod {
+				m.lastPeriod = period
+				m.recalcCodes()
+			}
+			if time.Now().After(m.errExp) {
+				m.errMsg = ""
+			}
+			m.tick = time.Time(msg)
 			return m, tickCmd()
 		}
 	case "addService":
@@ -344,7 +370,7 @@ func mainView(m model) string {
 		b.WriteString(fmt.Sprintf("%s %s: %s\n", cursor, svc.name, code))
 	}
 
-	b.WriteString("\n\nPress 'a' to add a new service\nPress 'd' to delete selected service\nPress 'q' to quit\n")
+	b.WriteString("\n\nPress 'a' to add a new service\nPress 'd' to delete selected service\nPress 'c' to copy code\nPress 'q' to quit\n")
 
 	if m.errMsg != "" && time.Now().Before(m.errExp) {
 		b.WriteString("Info: " + m.errMsg)
